@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Material Manager - Task 2</title>
+<style>
+body{font-family:Arial;max-width:1100px;margin:30px auto;padding:15px}
+label{display:block;margin-top:10px} input,select,button{padding:8px;margin-top:4px}
+.error{color:red;font-size:13px;margin-left:8px}.success{color:green;margin:10px 0}
+.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center}
+.modal-box{background:white;padding:25px;width:400px}.hidden{display:none}
+table{width:100%;border-collapse:collapse;margin-top:25px}th,td{border:1px solid #ccc;padding:8px}
+</style>
+</head>
+<body>
+<h1>Study Material Manager</h1>
+<p id="message" class="success"></p>
+
+<form id="materialForm" novalidate>
+    <label>Title <input id="title" type="text"></label><span id="titleError" class="error"></span>
+    <label>Subject Name <input id="subject" type="text"></label><span id="subjectError" class="error"></span>
+    <label>Semester
+        <select id="semester"><option value="">Select Semester</option><option>Semester 1</option><option>Semester 2</option><option>Semester 3</option><option>Semester 4</option><option>Semester 5</option><option>Semester 6</option><option>Semester 7</option><option>Semester 8</option></select>
+    </label><span id="semesterError" class="error"></span>
+    <label>Material Type
+        <select id="type"><option value="">Select Type</option><option>Notes</option><option>Question Paper</option><option>Assignment</option><option>Study Guide</option></select>
+    </label><span id="typeError" class="error"></span>
+    <label>Uploaded By <input id="uploadedBy" type="text"></label><span id="uploadedByError" class="error"></span>
+    <label>File <input id="file" type="file" accept=".pdf,application/pdf"></label><span id="fileError" class="error"></span>
+    <button id="submitBtn" type="submit" disabled>Submit</button>
+</form>
+
+<table>
+<thead><tr><th>Title</th><th>Subject</th><th>Semester</th><th>Type</th><th>Uploaded By</th><th>File</th><th>Actions</th></tr></thead>
+<tbody id="tableBody"></tbody>
+</table>
+
+<div id="editModal" class="modal hidden">
+<div class="modal-box">
+<h2>Edit Material</h2>
+<input type="hidden" id="editIndex">
+<label>Title <input id="editTitle"></label>
+<label>Subject <input id="editSubject"></label>
+<label>Semester <select id="editSemester"><option value="">Select Semester</option><option>Semester 1</option><option>Semester 2</option><option>Semester 3</option><option>Semester 4</option><option>Semester 5</option><option>Semester 6</option><option>Semester 7</option><option>Semester 8</option></select></label>
+<label>Material Type <select id="editType"><option value="">Select Type</option><option>Notes</option><option>Question Paper</option><option>Assignment</option><option>Study Guide</option></select></label>
+<label>Uploaded By <input id="editUploadedBy"></label>
+<label>File <input id="editFile" type="file" accept=".pdf,application/pdf"></label>
+<button id="saveEdit">Save Changes</button><button id="closeEdit">Cancel</button>
+</div></div>
+
+<div id="deleteModal" class="modal hidden">
+<div class="modal-box">
+<h2>Delete Material</h2><p>Are you sure?</p>
+<button id="confirmDelete">Yes, Delete</button><button id="cancelDelete">Cancel</button>
+</div></div>
+
+<script>
+let materials = [];
+let deleteIndex = -1;
+
+const ids = ["title","subject","semester","type","uploadedBy","file"];
+function validateForm() {
+    let valid = true;
+    document.querySelectorAll(".error").forEach(e => e.textContent = "");
+
+    if (!title.value.trim()) { titleError.textContent = "Title is required"; valid = false; }
+    if (!subject.value.trim()) { subjectError.textContent = "Subject is required"; valid = false; }
+    if (!semester.value) { semesterError.textContent = "Select semester"; valid = false; }
+    if (!type.value) { typeError.textContent = "Select material type"; valid = false; }
+    if (!uploadedBy.value.trim()) { uploadedByError.textContent = "Uploaded By is required"; valid = false; }
+    if (!file.files[0]) { fileError.textContent = "PDF is required"; valid = false; }
+    else if (file.files[0].type !== "application/pdf") { fileError.textContent = "Only PDF allowed"; valid = false; }
+
+    submitBtn.disabled = !valid;
+    return valid;
+}
+ids.forEach(id => document.getElementById(id).addEventListener("input", validateForm));
+ids.forEach(id => document.getElementById(id).addEventListener("change", validateForm));
+
+materialForm.addEventListener("submit", e => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    materials.push({
+        title:title.value.trim(), subject:subject.value.trim(), semester:semester.value,
+        type:type.value, uploadedBy:uploadedBy.value.trim(), file:file.files[0].name
+    });
+    materialForm.reset(); submitBtn.disabled = true;
+    message.textContent = "Material submitted successfully.";
+    render();
+});
+
+function render() {
+    tableBody.innerHTML = "";
+    materials.forEach((m,i) => {
+        tableBody.innerHTML += `<tr>
+        <td>${escapeHtml(m.title)}</td><td>${escapeHtml(m.subject)}</td><td>${escapeHtml(m.semester)}</td>
+        <td>${escapeHtml(m.type)}</td><td>${escapeHtml(m.uploadedBy)}</td><td>${escapeHtml(m.file)}</td>
+        <td><button onclick="openEdit(${i})">Edit</button><button onclick="openDelete(${i})">Delete</button></td></tr>`;
+    });
+}
+function escapeHtml(v){return v.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
+function openEdit(i){
+    const m=materials[i]; editIndex.value=i; editTitle.value=m.title; editSubject.value=m.subject;
+    editSemester.value=m.semester; editType.value=m.type; editUploadedBy.value=m.uploadedBy;
+    editModal.classList.remove("hidden");
+}
+saveEdit.onclick=()=>{
+    const i=Number(editIndex.value);
+    if(!editTitle.value.trim()||!editSubject.value.trim()||!editSemester.value||!editType.value||!editUploadedBy.value.trim()){return;}
+    const newFile=editFile.files[0];
+    if(newFile && newFile.type!=="application/pdf"){alert("Only PDF allowed");return;}
+    materials[i]={...materials[i],title:editTitle.value.trim(),subject:editSubject.value.trim(),semester:editSemester.value,type:editType.value,uploadedBy:editUploadedBy.value.trim(),file:newFile?newFile.name:materials[i].file};
+    editModal.classList.add("hidden"); message.textContent="Material edited successfully."; render();
+};
+closeEdit.onclick=()=>editModal.classList.add("hidden");
+function openDelete(i){deleteIndex=i;deleteModal.classList.remove("hidden");}
+confirmDelete.onclick=()=>{materials.splice(deleteIndex,1);deleteModal.classList.add("hidden");message.textContent="Material deleted successfully.";render();}
+cancelDelete.onclick=()=>deleteModal.classList.add("hidden");
+</script>
+</body>
+</html>
